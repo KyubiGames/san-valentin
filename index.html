@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Criptograma</title>
+
+<style>
+.tabla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.tabla div {
+  background: #f5f5f5;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #ffe6ee;
+  padding: 20px;
+  text-align: center;
+}
+
+.box {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  max-width: 1000px;
+  margin: auto;
+}
+
+.frase {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 20px 0;
+}
+
+.letra {
+  width: 45px;
+  text-align: center;
+}
+
+.letra input {
+  width: 100%;
+  height: 35px;
+  font-size: 18px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.numero {
+  border: 1px solid #ccc;
+  padding: 5px 0;
+  background: #f3f3f3;
+}
+
+.palabra {
+  display: flex;
+  gap: 6px;
+  margin-right: 12px;
+  margin-bottom: 10px;
+  flex-wrap: nowrap;
+}
+
+.espacio {
+  width: 20px;
+}
+
+button {
+  margin-top: 20px;
+  padding: 10px 25px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.signo {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 20px;
+  height: 60px; /* mismo alto visual que una letra */
+  font-size: 22px;
+  margin-left: 2px;
+}
+
+
+#musica {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+#volumen-control {
+  position: fixed;
+  bottom: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+#volumen {
+  width: 80px;
+}
+
+.palabra-correcta {
+  background: rgba(255, 182, 193, 0.35);
+  box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
+  animation: latido 0.9s ease-in-out;
+}
+
+@keyframes latido {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  60%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h1>🔐 Criptograma</h1>
+  <p>Descifrá el mensaje escribiendo una letra en cada casillero</p>
+
+  <h3>📘 Tabla de equivalencias</h3>
+    <div id="tabla" class="tabla"></div>
+
+  <div id="frase" class="frase"></div>
+
+  <button onclick="verificar()">Comprobar</button>
+  <p id="mensaje"></p>
+</div>
+
+<script>
+document.addEventListener("click", activarSonido, { once: true });
+
+function activarSonido() {
+  const iframe = document.getElementById("ytplayer");
+  iframe.src = iframe.src.replace("&mute=1", "&mute=0");
+}
+
+const fraseOriginal =
+"ME DA IGUAL CUANTOS OJOS ME MIREN... TOTAL, YO YA ME PERDI EN LOS TUYOS, Y DE AHI NO HE REGRESADO NI PIENSO REGRESAR";
+
+function generarMapa() {
+  const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const numeros = Array.from({ length: 26 }, (_, i) => i + 1);
+
+  // Mezclar los números (Fisher–Yates)
+  for (let i = numeros.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [numeros[i], numeros[j]] = [numeros[j], numeros[i]];
+  }
+
+  const mapa = {};
+  letras.forEach((letra, i) => {
+    mapa[letra] = numeros[i];
+  });
+
+  return mapa;
+}
+
+const mapa = generarMapa();
+
+const contenedor = document.getElementById("frase");
+
+const tabla = document.getElementById("tabla");
+
+// Mostrar equivalencias en orden aleatorio
+const entries = Object.entries(mapa)
+  .sort(() => Math.random() - 0.5);
+
+entries.forEach(([letra, numero]) => {
+  const div = document.createElement("div");
+  div.textContent = `${numero} = ${letra}`;
+  tabla.appendChild(div);
+});
+
+const palabras = fraseOriginal.split(" ");
+palabras.forEach(palabraTexto => {
+
+  const palabraDiv = document.createElement("div");
+  palabraDiv.className = "palabra";
+
+  for (const char of palabraTexto) {
+
+    // Coma o punto
+    if (char === "," || char === ".") {
+      const signo = document.createElement("div");
+      signo.className = "signo";
+      signo.textContent = char;
+      palabraDiv.appendChild(signo);
+      continue;
+    }
+
+    const div = document.createElement("div");
+    div.className = "letra";
+
+    const input = document.createElement("input");
+    input.addEventListener("keydown", manejarTecla);
+    input.dataset.correcta = char;
+
+    const num = document.createElement("div");
+    num.className = "numero";
+    num.textContent = mapa[char];
+
+    div.appendChild(input);
+    div.appendChild(num);
+    palabraDiv.appendChild(div);
+  }
+
+  contenedor.appendChild(palabraDiv);
+});
+
+function verificar() {
+  const inputs = document.querySelectorAll(".letra input");
+  let correcto = true;
+
+  inputs.forEach(i => {
+    if (i.value.toUpperCase() !== i.dataset.correcta) {
+      correcto = false;
+    }
+  });
+
+  if (correcto) {
+    localStorage.setItem("nivel", 2);
+    document.getElementById("mensaje").textContent =
+      "❤️ ¡Mensaje descifrado correctamente! ❤️";
+    setTimeout(() => {
+      window.location.href = "juego2.html";
+    }, 2000);
+  } else {
+    document.getElementById("mensaje").textContent =
+      "❌ Hay letras incorrectas, seguí intentando";
+  }
+}
+
+function moverSiguiente(e) {
+  const input = e.target;
+  input.value = input.value.toUpperCase();
+
+  if (input.value.length === 1) {
+    const inputs = Array.from(
+      document.querySelectorAll(".letra input")
+    );
+
+    const index = inputs.indexOf(input);
+
+    for (let i = index + 1; i < inputs.length; i++) {
+      if (!inputs[i].disabled) {
+        inputs[i].focus();
+        break;
+      }
+    }
+  }
+}
+
+function manejarTecla(e) {
+  const input = e.target;
+  const letra = e.key.toUpperCase();
+
+  // Permitir teclas de control
+  if (
+    e.key === "Backspace" ||
+    e.key === "Tab" ||
+    e.key === "ArrowLeft" ||
+    e.key === "ArrowRight"
+  ) {
+    return;
+  }
+
+  // Solo letras A-Z
+  if (!/^[A-Z]$/.test(letra)) {
+    e.preventDefault();
+    return;
+  }
+
+  e.preventDefault(); // evitamos el comportamiento default
+
+  input.value = letra;
+
+  // Si es correcta → bloquear y pasar al siguiente
+  if (letra === input.dataset.correcta) {
+    input.disabled = true;
+    input.style.background = "#d4f8d4";
+
+    const palabra = input.closest(".palabra");
+
+    const inputs = Array.from(
+      document.querySelectorAll(".letra input")
+    );
+    const index = inputs.indexOf(input);
+
+    for (let i = index + 1; i < inputs.length; i++) {
+      if (!inputs[i].disabled) {
+        inputs[i].focus();
+        break;
+      }
+    }
+  }
+}
+
+function moverAnterior(e) {
+  if (e.key !== "Backspace") return;
+
+  const input = e.target;
+  const inputs = Array.from(
+    document.querySelectorAll(".letra input")
+  );
+
+  const index = inputs.indexOf(input);
+
+  if (input.value === "" && index > 0) {
+    inputs[index - 1].focus();
+  }
+}
+
+</script>
+<!-- Reproductor oculto -->
+<div id="musica">
+  <div id="player"></div>
+</div>
+
+<!-- Control de volumen -->
+<div id="volumen-control">
+  🔊
+  <input
+    type="range"
+    min="0"
+    max="100"
+    value="50"
+    id="volumen"
+  >
+</div>
+
+<div id="musica">
+  <iframe
+    src="https://www.youtube.com/embed/saDIIGYqsOo?autoplay=1&loop=1&playlist=saDIIGYqsOo"
+    frameborder="0"
+    allow="autoplay"
+    allowfullscreen>
+  </iframe>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+let player;
+let sonidoActivado = false;
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player("player", {
+    videoId: "saDIIGYqsOo",
+    playerVars: {
+      autoplay: 1,
+      loop: 1,
+      playlist: "saDIIGYqsOo",
+      controls: 0,
+      modestbranding: 1
+    },
+    events: {
+      onReady: onPlayerReady
+    }
+  });
+}
+
+function onPlayerReady() {
+  player.mute();          // obligatorio para autoplay
+  player.setVolume(50);   // volumen inicial 50%
+  player.playVideo();
+}
+
+// Activar sonido en la primera interacción
+document.addEventListener("click", () => {
+  if (!sonidoActivado && player) {
+    player.unMute();
+    sonidoActivado = true;
+  }
+}, { once: true });
+
+// Control de volumen
+document.getElementById("volumen").addEventListener("input", e => {
+  if (player) {
+    player.setVolume(e.target.value);
+    if (e.target.value == 0) {
+      player.mute();
+    } else {
+      player.unMute();
+    }
+  }
+});
+</script>
+
+</body>
+</html>
