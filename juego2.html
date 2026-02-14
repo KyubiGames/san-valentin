@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Crucigrama</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #ffe6ee;
+  text-align: center;
+  padding: 20px;
+}
+
+.box {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.crucigrama {
+  display: grid;
+  grid-template-columns: repeat(15, 42px);
+  grid-template-rows: repeat(8, 42px);
+  gap: 4px;
+  justify-content: center;
+  margin: 30px auto;
+}
+
+.celda {
+  width: 42px;
+  height: 42px;
+}
+
+.celda input {
+  width: 100%;
+  height: 100%;
+  font-size: 18px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.oculta {
+  visibility: hidden;
+}
+
+.central {
+  background: #ffd6e7;
+  color: #c2185b;
+  font-weight: bold;
+  cursor: default;
+}
+
+.correcta {
+  background: #ffd6e7;
+}
+
+#musica {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+#volumen-control {
+  position: fixed;
+  bottom: 15px;
+  right: 15px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+#volumen {
+  width: 80px;
+}
+
+.palabra-correcta {
+  background: rgba(255, 182, 193, 0.35);
+  box-shadow: 0 0 15px rgba(255, 105, 180, 0.5);
+  animation: latido 0.9s ease-in-out;
+}
+
+@keyframes latido {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  60%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h1>🧩 Crucigrama</h1>
+
+  <ol style="text-align:left; max-width:600px; margin:auto;">
+    <li>A ambos nos gusta el terror ...</li>
+    <li>Nos quedamos jugando o hablando hasta tarde en la ...</li>
+    <li>Lo que los dos tuvimos al dormir juntos la primera vez en llamada.</li>
+    <li>Primer juego que nos quedamos toda la noche viciando.</li>
+    <li>Fue nuestro primer ... juntos, cuando estábamos jugando Sky.</li>
+    <li>Juego en el que nos dimos la mano por primera vez.</li>
+    <li>Tú eres una ... en stream.</li>
+    <li>Nuestro animal favorito.</li>
+  </ol>
+
+  <div class="crucigrama" id="crucigrama"></div>
+
+  <button onclick="verificar()">Comprobar</button>
+  <p id="mensaje"></p>
+</div>
+
+<script>
+/* =========================
+   CONFIGURACIÓN
+========================= */
+
+// Palabras del crucigrama (por coordenadas)
+const palabras = [
+  // ANALOGO
+  ["0-7","0-8","0-9","0-10","0-11","0-12","0-13"],
+
+  // MAÑANA
+  ["1-7","1-8","1-9","1-10","1-11","1-12"],
+
+  // SUEÑO
+  ["2-3","2-4","2-5","2-6","2-7"],
+
+  // REPO
+  ["3-7","3-8","3-9","3-10"],
+
+  // CONCIERTO
+  ["4-4","4-5","4-6","4-7","4-8","4-9","4-10","4-11","4-12"],
+
+  // HEARTOPIA
+  ["5-0","5-1","5-2","5-3","5-4","5-5","5-6","5-7","5-8"],
+
+  // VTUBER
+  ["6-6","6-7","6-8","6-9","6-10","6-11"],
+
+  // GATOS
+  ["7-4","7-5","7-6","7-7","7-8"]
+];
+
+// Celdas visibles
+const visibles = new Set([
+  // AMORCITO vertical (columna 7)
+  "0-7","1-7","2-7","3-7","4-7","5-7","6-7","7-7",
+
+  // ANALOGO
+  "0-7","0-8","0-9","0-10","0-11","0-12","0-13",
+
+  // MAÑANA
+  "1-7","1-8","1-9","1-10","1-11","1-12",
+
+  // SUEÑO
+  "2-3","2-4","2-5","2-6","2-7",
+
+  // REPO
+  "3-7","3-8","3-9","3-10",
+
+  // CONCIERTO
+  "4-4","4-5","4-6","4-7","4-8","4-9","4-10","4-11","4-12",
+
+  // HEARTOPIA
+  "5-0","5-1","5-2","5-3","5-4","5-5","5-6","5-7","5-8",
+
+  // VTUBER
+  "6-6","6-7","6-8","6-9","6-10","6-11",
+
+  // GATOS
+  "7-4","7-5","7-6","7-7","7-8"
+]);
+
+// Letras correctas
+const letras = {
+  // AMORCITO
+  "0-7":"A","1-7":"M","2-7":"O","3-7":"R",
+  "4-7":"C","5-7":"I","6-7":"T","7-7":"O",
+
+  // ANALOGO
+  "0-8":"N","0-9":"A","0-10":"L","0-11":"O","0-12":"G","0-13":"O",
+
+  // MAÑANA
+  "1-8":"A","1-9":"Ñ","1-10":"A","1-11":"N","1-12":"A",
+
+  // SUEÑO
+  "2-3":"S","2-4":"U","2-5":"E","2-6":"Ñ",
+
+  // REPO
+  "3-8":"E","3-9":"P","3-10":"O",
+
+  // CONCIERTO
+  "4-4":"C","4-5":"O","4-6":"N","4-8":"I","4-9":"E","4-10":"R","4-11":"T","4-12":"O",
+
+  // HEARTOPIA
+  "5-0":"H","5-1":"E","5-2":"A","5-3":"R","5-4":"T","5-5":"O","5-6":"P","5-8":"A",
+
+  // VTUBER
+  "6-6":"V","6-8":"U","6-9":"B","6-10":"E","6-11":"R",
+
+  // GATOS
+  "7-4":"G","7-5":"A","7-6":"T","7-8":"S"
+};
+
+/* =========================
+   RENDER
+========================= */
+
+const contenedor = document.getElementById("crucigrama");
+
+for (let fila = 0; fila < 8; fila++) {
+  for (let col = 0; col < 15; col++) {
+
+    const celda = document.createElement("div");
+    celda.className = "celda";
+
+    const key = `${fila}-${col}`;
+
+    if (!visibles.has(key)) {
+      celda.classList.add("oculta");
+    } else {
+      const input = document.createElement("input");
+      input.dataset.correcta = letras[key] || "";
+      input.dataset.key = key;
+
+      // Letras centrales AMORCITO
+      if (["0-7","1-7","2-7","3-7","4-7","5-7","6-7","7-7"].includes(key)) {
+        input.value = letras[key];
+        input.disabled = true;
+        input.classList.add("central");
+      }
+      input.addEventListener("keydown", e => {
+        const letra = e.key.toUpperCase();
+
+        // Permitir teclas de control
+        if (
+          e.key === "Backspace" ||
+          e.key === "Tab" ||
+          e.key === "ArrowLeft" ||
+          e.key === "ArrowRight"
+        ) {
+          return;
+        }
+
+        // Solo letras A-Z y Ñ
+        if (!/^[A-ZÑ]$/.test(letra)) {
+          e.preventDefault();
+          return;
+        }
+
+        e.preventDefault();
+
+        // Escribimos/reemplazamos la letra
+        input.value = letra;
+
+        // Si es correcta → bloquear y pasar al siguiente
+        if (letra === input.dataset.correcta) {
+          input.classList.add("correcta");
+          input.disabled = true;
+          
+          verificarPalabraCompleta(input.dataset.key);
+
+
+          // 👉 mover foco al siguiente input disponible
+          const inputs = Array.from(
+            document.querySelectorAll(".celda input")
+          );
+
+          const index = inputs.indexOf(input);
+
+          for (let i = index + 1; i < inputs.length; i++) {
+            if (!inputs[i].disabled) {
+              inputs[i].focus();
+              break;
+            }
+          }
+
+        } else {
+          input.classList.remove("correcta");
+        }
+      });
+
+      celda.appendChild(input);
+    }
+
+    contenedor.appendChild(celda);
+  }
+}
+
+function verificarPalabraCompleta(keyActual) {
+
+  palabras.forEach(palabra => {
+
+    // Si esta letra no pertenece a esta palabra, salteamos
+    if (!palabra.includes(keyActual)) return;
+
+    // Obtenemos los inputs de esa palabra
+    const inputs = palabra.map(k =>
+      document.querySelector(`input[data-key="${k}"]`)
+    );
+
+    // ¿Todas las letras están correctas y bloqueadas?
+    const completa = inputs.every(
+      i => i && i.disabled && i.value === i.dataset.correcta
+    );
+
+    if (completa) {
+      inputs.forEach(i => {
+        i.parentElement.classList.add("palabra-correcta");
+      });
+    }
+  });
+}
+
+/* =========================
+   VERIFICACIÓN
+========================= */
+
+function verificar() {
+  const inputs = document.querySelectorAll(".celda input");
+  let ok = true;
+
+  inputs.forEach(i => {
+    if (i.value !== i.dataset.correcta) ok = false;
+  });
+
+  if (ok) {
+    document.getElementById("mensaje").textContent =
+      "❤️ Crucigrama completo ❤️";
+
+    // ⏳ pequeña pausa para que se vea el mensaje
+    setTimeout(() => {
+      window.location.href = "juego3.html";
+    }, 1800);
+
+  } else {
+    document.getElementById("mensaje").textContent =
+      "❌ Hay errores";
+  }
+}
+
+</script>
+<!-- Reproductor oculto -->
+<div id="musica">
+  <div id="player"></div>
+</div>
+
+<!-- Control de volumen -->
+<div id="volumen-control">
+  🔊
+  <input type="range" min="0" max="100" value="50" id="volumen">
+</div>
+
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script>
+let player;
+let musicaIniciada = false;
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player("player", {
+    videoId: "jb0K64SGsfc",
+    playerVars: {
+      controls: 0,
+      modestbranding: 1,
+      loop: 1,
+      playlist: "jb0K64SGsfc"
+    }
+  });
+}
+
+// ▶️ PRIMER CLICK EN LA PÁGINA
+document.addEventListener("click", () => {
+  if (!player || musicaIniciada) return;
+
+  player.setVolume(50);
+  player.unMute();
+  player.playVideo();
+
+  musicaIniciada = true;
+}, { once: true });
+
+// 🎚️ Control de volumen
+document.getElementById("volumen").addEventListener("input", e => {
+  if (!player) return;
+
+  const v = e.target.value;
+  player.setVolume(v);
+
+  if (v == 0) {
+    player.mute();
+  } else {
+    player.unMute();
+  }
+});
+</script>
+
+</body>
+</html>
